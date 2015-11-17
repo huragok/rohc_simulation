@@ -3,12 +3,13 @@ from lxml import etree
 
 
 # Util function definition
-def add_entry_to_parameter(parameter, instance_text, prob_table_text):
+def add_entry_to_parameter(parameter, instance_text, table_type, table_text):
     """ Add an Entry element to a Parameter element in the pomdpx file.
     Args:
         parameter (xml element): the parent Parameter element
         instance_text (str): the text of the child Instance element
-        prob_table_text (str): the text of the child ProbTable element
+        table_type (str): either "ProbTable" or "ValueTable"
+        table_text (str): the text of the child Table element
    
     Returns:
         xml element: the Entry element added to the Parameter element
@@ -16,7 +17,7 @@ def add_entry_to_parameter(parameter, instance_text, prob_table_text):
     
     entry = etree.SubElement(parameter, 'Entry')
     etree.SubElement(entry, 'Instance').text = instance_text
-    etree.SubElement(entry, 'ProbTable').text = prob_table_text
+    etree.SubElement(entry, table_type).text = table_text
     return entry
     
 def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_header_FO, len_header_SO, len_payload):
@@ -86,7 +87,7 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
     etree.SubElement(cp_isb, 'Var').text = "state_0"
     etree.SubElement(cp_isb, 'Parent').text = "null"
     param_cp_isb = etree.SubElement(cp_isb, 'Parameter', attrib = {'type': 'TBL'})
-    add_entry_to_parameter(param_cp_isb, "-", ' '.join(list(map(str, [EPS, 1-EPS] + [0] * (2 + W)))))
+    add_entry_to_parameter(param_cp_isb, "-", 'ProbTable', ' '.join(list(map(str, [EPS, 1-EPS] + [0] * (2 + W)))))
 
     # State transition function
     cp_stf = etree.SubElement(state_transition_function, 'CondProb')
@@ -95,38 +96,38 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
     param_cp_stf = etree.SubElement(cp_stf, 'Parameter', attrib = {'type': 'TBL'})
 
     ## The action-independent state transition probability
-    add_entry_to_parameter(param_cp_stf, "s0 * s0", str(P_BB))
-    add_entry_to_parameter(param_cp_stf, "s1 * s0", str(P_GB))
-    add_entry_to_parameter(param_cp_stf, "s4 * s4", str(P_GG))
-    add_entry_to_parameter(param_cp_stf, "s4 * s5", str(P_GB))
-    add_entry_to_parameter(param_cp_stf, "s2 * s2", str(P_BB))
-    add_entry_to_parameter(param_cp_stf, "s3 * s2", str(P_GB))
+    add_entry_to_parameter(param_cp_stf, "s0 * s0", 'ProbTable', str(P_BB))
+    add_entry_to_parameter(param_cp_stf, "s1 * s0", 'ProbTable', str(P_GB))
+    add_entry_to_parameter(param_cp_stf, "s4 * s4", 'ProbTable', str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s4 * s5", 'ProbTable', str(P_GB))
+    add_entry_to_parameter(param_cp_stf, "s2 * s2", 'ProbTable', str(P_BB))
+    add_entry_to_parameter(param_cp_stf, "s3 * s2", 'ProbTable', str(P_GB))
 
     for w in range(1, W):
-        add_entry_to_parameter(param_cp_stf, "s{0} * s4".format(w + 4), str(P_BG))
+        add_entry_to_parameter(param_cp_stf, "s{0} * s4".format(w + 4), 'ProbTable', str(P_BG))
         
     for w in range(1, W - 1):
-        add_entry_to_parameter(param_cp_stf, "s{0} * s{1}".format(w + 4, w + 5), str(P_BB))
-    add_entry_to_parameter(param_cp_stf, "s{0} * s2".format(W + 3), str(P_BB))
+        add_entry_to_parameter(param_cp_stf, "s{0} * s{1}".format(w + 4, w + 5), 'ProbTable', str(P_BB))
+    add_entry_to_parameter(param_cp_stf, "s{0} * s2".format(W + 3), 'ProbTable', str(P_BB))
 
     ## The action-dependent state transition probability
     ### IR
-    add_entry_to_parameter(param_cp_stf, "s0 IR s4", str(P_BG))
-    add_entry_to_parameter(param_cp_stf, "s1 IR s4", str(P_GG))
-    add_entry_to_parameter(param_cp_stf, "s2 IR s4", str(P_BG))
-    add_entry_to_parameter(param_cp_stf, "s3 IR s4", str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s0 IR s4", 'ProbTable', str(P_BG))
+    add_entry_to_parameter(param_cp_stf, "s1 IR s4", 'ProbTable', str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s2 IR s4", 'ProbTable', str(P_BG))
+    add_entry_to_parameter(param_cp_stf, "s3 IR s4", 'ProbTable', str(P_GG))
 
     ### FO
-    add_entry_to_parameter(param_cp_stf, "s0 FO s1", str(P_BG))
-    add_entry_to_parameter(param_cp_stf, "s1 FO s1", str(P_GG))
-    add_entry_to_parameter(param_cp_stf, "s2 FO s4", str(P_BG))
-    add_entry_to_parameter(param_cp_stf, "s3 FO s4", str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s0 FO s1", 'ProbTable', str(P_BG))
+    add_entry_to_parameter(param_cp_stf, "s1 FO s1", 'ProbTable', str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s2 FO s4", 'ProbTable', str(P_BG))
+    add_entry_to_parameter(param_cp_stf, "s3 FO s4", 'ProbTable', str(P_GG))
 
     ### SO
-    add_entry_to_parameter(param_cp_stf, "s0 SO s1", str(P_BG))
-    add_entry_to_parameter(param_cp_stf, "s1 SO s1", str(P_GG))
-    add_entry_to_parameter(param_cp_stf, "s2 SO s3", str(P_BG))
-    add_entry_to_parameter(param_cp_stf, "s3 SO s3", str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s0 SO s1", 'ProbTable', str(P_BG))
+    add_entry_to_parameter(param_cp_stf, "s1 SO s1", 'ProbTable', str(P_GG))
+    add_entry_to_parameter(param_cp_stf, "s2 SO s3", 'ProbTable', str(P_BG))
+    add_entry_to_parameter(param_cp_stf, "s3 SO s3", 'ProbTable', str(P_GG))
 
     # Observation function
     cp_of = etree.SubElement(obs_function, 'CondProb')
@@ -139,28 +140,28 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
 
     ## BB
     for state in state_B:
-        add_entry_to_parameter(param_cp_of, state + ' obad', str(1 - P_MD))
+        add_entry_to_parameter(param_cp_of, state + ' obad', 'ProbTable', str(1 - P_MD))
         
     ## BG
     for state in state_B:
-        add_entry_to_parameter(param_cp_of, state + ' ogood', str(P_MD))
+        add_entry_to_parameter(param_cp_of, state + ' ogood', 'ProbTable', str(P_MD))
 
     ## GB
     for state in state_G:
-        add_entry_to_parameter(param_cp_of, state + ' obad', str(P_FA))
+        add_entry_to_parameter(param_cp_of, state + ' obad', 'ProbTable', str(P_FA))
 
     ## GG
     for state in state_G:
-        add_entry_to_parameter(param_cp_of, state + ' ogood', str(1 - P_FA))
+        add_entry_to_parameter(param_cp_of, state + ' ogood', 'ProbTable', str(1 - P_FA))
 
     # Reward function
-    f_rf = etree.SubElement(obs_function, 'Func')
+    f_rf = etree.SubElement(reward_function, 'Func')
     etree.SubElement(f_rf, 'Var').text = "efficiency" 
     etree.SubElement(f_rf, 'Parent').text = "type_compression state_1" # a, s'
     param_f_rf = etree.SubElement(f_rf, 'Parameter', attrib = {'type': 'TBL'})
 
     ## Only when s' = FC_0 there is a non-zero reward
-    add_entry_to_parameter(param_f_rf, "- s4", ' '.join(map(str, [len_payload / len_IR, len_payload / len_FO, len_payload / len_SO])))
+    add_entry_to_parameter(param_f_rf, "- s4", 'ValueTable', ' '.join(map(str, [len_payload / len_IR, len_payload / len_FO, len_payload / len_SO])))
 
     # Generate the .pomdpx file
     tree_pomdpx = etree.ElementTree(root_pomdpx)

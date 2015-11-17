@@ -1,3 +1,11 @@
 *~
 *.pomdpx
+*.policy
 *.xsd
+APPL_SARSOP_v0.96
+polgraph
+pomdpconvert
+pomdpeval
+pomdpsim
+pomdpsol
+testControllerTiger
