@@ -20,21 +20,21 @@ def add_entry_to_parameter(parameter, instance_text, table_type, table_text):
     etree.SubElement(entry, table_type).text = table_text
     return entry
     
-def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_header_FO, len_header_SO, len_payload):
-    """ Generate a .pomdpx file defining the cross-layer ROHC problem.
+def gen_pomdpx(filename, W, L_B, EPS, GAMMA, len_header_IR, len_header_FO, len_header_SO, len_payload, P_FA = None, P_MD = None):
+    """ Generate a .pomdpx file defining the POMDP cross-layer ROHC problem.
     Args:
         filename (str): the filename of the generated file
         W (int): capability of the WLSB coding, the maximal number of packets that can be lost in a row without losing the context synchronization
         L_B (double): the average duration of a sequence of bad states of the Gilbert-Elliott channel
         EPS (double): the average erasure probability of the Gilbert-Elliott channel
-        P_FA (double): the false-alarm probability of the channel state estimator, i.e. the probability when the channel is "good" but the estimation is "bad"
-        P_MD (double): the miss-detection probability of the channel state estimator, i.e. the probability when the channel is "bad" but the estimation is "good"
         GAMMA (double): the discount factor of the POMDP model.
         len_header_IR (int): length of the IR packet's header
         len_header_FO (int): length of the FO packet's header
         len_header_SO (int): length of the SO packet's header
         len_payload (int): length of the payload
-   
+        P_FA (double): the false-alarm probability of the channel state estimator, i.e. the probability when the channel is "good" but the estimation is "bad"
+        P_MD (double): the miss-detection probability of the channel state estimator, i.e. the probability when the channel is "bad" but the estimation is "good"
+        
     Returns:
         none
         
@@ -51,6 +51,12 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
     len_IR = len_header_IR + len_payload
     len_FO = len_header_FO + len_payload
     len_SO = len_header_SO + len_payload
+    
+    fully_observable = False
+    if P_FA is None and P_MD is None:
+        fully_observable = True
+    P_FA = 0.0 if P_FA is None else P_FA
+    P_MD = 0.0 if P_MD is None else P_MD   
 
     # Outline of the pomdpx file
     ns = 'http://www.w3.org/2001/XMLSchema-instance'
@@ -65,17 +71,22 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
     reward_function = etree.SubElement(root_pomdpx, 'RewardFunction')
 
     # Description
-    description.text = "Cross-layer ROHC design problem. W = {0}; L_B = {1}, EPS = {2}; P_FA = {3}, P_MD = {4}; gamma = {5}.".format(W, L_B, EPS, P_FA, P_MD, GAMMA)
+    description.text = "Cross-layer ROHC design problem using estimated channel state. W = {0}; L_B = {1}, EPS = {2}; P_FA = {3}, P_MD = {4}; gamma = {5}.".format(W, L_B, EPS, P_FA, P_MD, GAMMA)
 
     # Discount
     discount.text = str(GAMMA)
 
     # Variable
-    state_var = etree.SubElement(variable, 'StateVar', attrib = {'vnamePrev': 'state_0', 'vnameCurr': 'state_1'})
+    if not fully_observable:
+        state_var = etree.SubElement(variable, 'StateVar', attrib = {'vnamePrev': 'state_0', 'vnameCurr': 'state_1'})
+    else:
+        state_var = etree.SubElement(variable, 'StateVar', attrib = {'vnamePrev': 'state_0', 'vnameCurr': 'state_1', 'fullyObs': 'true'})
+        
     etree.SubElement(state_var, 'NumValues').text = str(4 + W) # The states are defined in the order of NC_B, NC_G, SC_B, SC_G, FC_0, FC_1, ..., FC_{W - 1}
-
-    obs_var = etree.SubElement(variable, 'ObsVar', attrib = {'vname': 'est_channel'})
-    etree.SubElement(obs_var, 'ValueEnum').text = "obad ogood"
+    
+    if not fully_observable:
+        obs_var = etree.SubElement(variable, 'ObsVar', attrib = {'vname': 'est_channel'})
+        etree.SubElement(obs_var, 'ValueEnum').text = "obad ogood"
 
     action_var = etree.SubElement(variable, 'ActionVar', attrib = {'vname': 'type_compression'})
     etree.SubElement(action_var, 'ValueEnum').text = "IR FO SO"
@@ -130,29 +141,30 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
     add_entry_to_parameter(param_cp_stf, "s3 SO s3", 'ProbTable', str(P_GG))
 
     # Observation function
-    cp_of = etree.SubElement(obs_function, 'CondProb')
-    etree.SubElement(cp_of, 'Var').text = "est_channel"
-    etree.SubElement(cp_of, 'Parent').text = "state_1" # s', o
-    param_cp_of = etree.SubElement(cp_of, 'Parameter', attrib = {'type': 'TBL'})
+    if not fully_observable:
+        cp_of = etree.SubElement(obs_function, 'CondProb')
+        etree.SubElement(cp_of, 'Var').text = "est_channel"
+        etree.SubElement(cp_of, 'Parent').text = "state_1" # s', o
+        param_cp_of = etree.SubElement(cp_of, 'Parameter', attrib = {'type': 'TBL'})
 
-    state_B = ['s0', 's2'] + ['s' + str(w + 4) for w in range(1, W)]
-    state_G = ['s1', 's3', 's4']
+        state_B = ['s0', 's2'] + ['s' + str(w + 4) for w in range(1, W)]
+        state_G = ['s1', 's3', 's4']
 
-    ## BB
-    for state in state_B:
-        add_entry_to_parameter(param_cp_of, state + ' obad', 'ProbTable', str(1 - P_MD))
-        
-    ## BG
-    for state in state_B:
-        add_entry_to_parameter(param_cp_of, state + ' ogood', 'ProbTable', str(P_MD))
+        ## BB
+        for state in state_B:
+            add_entry_to_parameter(param_cp_of, state + ' obad', 'ProbTable', str(1 - P_MD))
+            
+        ## BG
+        for state in state_B:
+            add_entry_to_parameter(param_cp_of, state + ' ogood', 'ProbTable', str(P_MD))
 
-    ## GB
-    for state in state_G:
-        add_entry_to_parameter(param_cp_of, state + ' obad', 'ProbTable', str(P_FA))
+        ## GB
+        for state in state_G:
+            add_entry_to_parameter(param_cp_of, state + ' obad', 'ProbTable', str(P_FA))
 
-    ## GG
-    for state in state_G:
-        add_entry_to_parameter(param_cp_of, state + ' ogood', 'ProbTable', str(1 - P_FA))
+        ## GG
+        for state in state_G:
+            add_entry_to_parameter(param_cp_of, state + ' ogood', 'ProbTable', str(1 - P_FA))
 
     # Reward function
     f_rf = etree.SubElement(reward_function, 'Func')
@@ -166,16 +178,16 @@ def gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_head
     # Generate the .pomdpx file
     tree_pomdpx = etree.ElementTree(root_pomdpx)
     with open(filename, 'wb') as output_file:
-        tree_pomdpx.write(output_file, pretty_print=True, encoding="iso-8859-1")
-        
+        tree_pomdpx.write(output_file, pretty_print=True, encoding="iso-8859-1")     
+
 if __name__ == "__main__":
     filename = "instance.pomdpx"
     W = 13 # Capability of the WLSB coding
-    L_B = 5 # Average duration of a sequence of consecutive bad states
-    EPS = 0.02 # Average deletion probability
+    L_B = 10 # Average duration of a sequence of consecutive bad states
+    EPS = 0.2 # Average deletion probability
 
-    P_FA = 0.001 # False alarm probability
-    P_MD = 0.01 # Miss detection probability
+    P_FA = 0.1 # False alarm probability
+    P_MD = 0.1 # Miss detection probability
 
     GAMMA = 0.95 # The discount factor
 
@@ -184,4 +196,5 @@ if __name__ == "__main__":
     len_header_SO = 4
     len_payload = 20
 
-    gen_pomdpx(filename, W, L_B, EPS, P_FA, P_MD, GAMMA, len_header_IR, len_header_FO, len_header_SO, len_payload)
+    gen_pomdpx(filename, W, L_B, EPS, GAMMA, len_header_IR, len_header_FO, len_header_SO, len_payload, P_FA, P_MD)
+    #gen_pomdpx(filename, W, L_B, EPS, GAMMA, len_header_IR, len_header_FO, len_header_SO, len_payload)

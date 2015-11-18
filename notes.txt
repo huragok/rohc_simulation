@@ -1,0 +1,9 @@
+./pomdpsol instance.pomdpx
+
+./pomdpsim --policy-file out.policy --simLen 20000 --simNum 100 instance.pomdpx
+
+./pomdpeval --policy-file out.policy --simLen 20000 --simNum 100 instance.pomdpx
+
+./polgraph --policy-file out.policy --policy-graph rohc.dot --graph-max-depth 3 instance.pomdpx
+
+dot -Tps rohc.dot -o rohc.pdf

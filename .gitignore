@@ -9,3 +9,4 @@ pomdpeval
 pomdpsim
 pomdpsol
 testControllerTiger
+*.dot
