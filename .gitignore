@@ -1,12 +1,32 @@
+# gedit backup file
 *~
+
+# SARSOP input/output files
 *.pomdpx
 *.policy
 *.xsd
+*.dot
+
+# SARSOP src folder
 APPL_SARSOP_v0.96
+
+# SARSOP executables
 polgraph
 pomdpconvert
 pomdpeval
 pomdpsim
 pomdpsol
 testControllerTiger
-*.dot
+
+# Eclipse
+.metadata
+.recommenders
+bin
+lib
+.settings
+.classpath
+.project
+*.class
+*.jar
+
+
