@@ -51,12 +51,10 @@ public class CompressorPOMDP implements Compressor {
 	
 	/** The POMDP compressor has knowledge on the WLSB capacity. */
 	final int W;
-	/** The POMDP compressor has knowledge on the channel estimator's performance. */
-	final double pFA, pMD;
 	/** The POMDP compressor has knowledge on the G-E channel characteristics. */
 	final double pBG, pGB;
 	/** The channel estimator entity. */
-	ChannelEstimator channelEstimator;
+	final ChannelEstimator channelEstimator;
 	/** The compressor's belief on the system's state, in the order of NC_B, NC_G, SC_B, SC_G, FC_0, FC_1, ..., FC_{W - 1}*/
 	DoubleMatrix belief; // The states are defined 
 	/** System's state transition matrix, corresponding to action IR, FO and SO, respectively. */
@@ -74,19 +72,18 @@ public class CompressorPOMDP implements Compressor {
 	/**
 	 * Create a POMDP compressor
 	 * @param W
-	 * @param pFA
-	 * @param pMD
 	 * @param pBG
 	 * @param pGB
+	 * @param channelEstimator the channel estimator that the ROHC compressor use to observe the channel
 	 * @param filename the .policy file to parse the policy vectors and actions
 	 * @see #parsePolicy(String)
 	 */
-	public CompressorPOMDP(int W, double pFA, double pMD, double pBG, double pGB, String filename){
+	public CompressorPOMDP(int W, double pBG, double pGB, ChannelEstimator channelEstimator, String filename){
 		this.W = W;
-		this.pFA = pFA;
-		this.pMD = pMD;
 		this.pBG = pBG;
 		this.pGB = pGB;
+		this.channelEstimator = channelEstimator;
+		
 		double pBB = 1 - pBG;
 		double pGG = 1 - pGB;
 		
@@ -131,6 +128,8 @@ public class CompressorPOMDP implements Compressor {
 		funcTransition[2].put(3, 3, pGG);
 		
 		// initialize observation function
+		double pMD = channelEstimator.pMD;
+		double pFA = channelEstimator.pFA;
 		funcObservation = new DoubleMatrix [2]; // 0 represent obs false (bad), 1 represent obs true (good)
 		funcObservation[0] = new DoubleMatrix(1, 4 + W); funcObservation[1] = new DoubleMatrix(1, 4 + W);
 		funcObservation[0].put(0, 1 - pMD); funcObservation[1].put(0, pMD);
@@ -179,10 +178,11 @@ public class CompressorPOMDP implements Compressor {
 	 * Update the compressor's belief on the system state
 	 * @param typePacket, the packet it transmits (action it takes), takes value from 0, 1, 2
 	 * @param obsChannel, the observed channel state from the channel estimator
-	 * FIXME: implement this function according to (12.2) and (12.3)
 	 */
-	public void updateBelief(int typePacket, boolean obsChannel) {
-		
+	void updateBelief(int typePacket, boolean obsChannel) {
+		int idxObs = obsChannel ? 1 : 0;
+		double likelihood = funcObservation[idxObs].dot(belief.mmul(funcTransition[typePacket])); // p(o|b,a)
+		belief = funcObservation[idxObs].mul(belief.mmul(funcTransition[typePacket])).mmul(1 / likelihood); // update the belief
 	}
 	
 	/**
@@ -196,7 +196,7 @@ public class CompressorPOMDP implements Compressor {
 	}
 	
 	/**
-	 * Transmit the packet that maximize the expected reward.
+	 * Transmit the packet that maximize the expected reward and update the belief.
 	 */
 	public int transmit() {
 		for (int p = 0; p < reward.length; p++) {
@@ -212,6 +212,9 @@ public class CompressorPOMDP implements Compressor {
 			}
 		}
 		
-		return actionPolicies[policyMaxReward];
+		int typePacket = actionPolicies[policyMaxReward];
+		
+		updateBelief(typePacket, channelEstimator.getChannelEst());
+		return typePacket;
 	}
 }

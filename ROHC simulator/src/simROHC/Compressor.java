@@ -3,7 +3,6 @@ package simROHC;
 /**
  * 
  * The ROHC compressor interface.
- * @author wenhaowu
  *
  */
 public interface Compressor {
@@ -13,8 +12,7 @@ public interface Compressor {
 	public void reset();
 	
 	/**
-	 * The compressor transmit a packet according to its current state, return a value from 0, 1, 2 (IR, FO, SO)
-	 * TODO: and update its own state
+	 * The compressor transmit a packet according to its current state, return a value from 0, 1, 2 (IR, FO, SO) and update its own state (probably through an observation)
 	 */
 	public int transmit();
 }
