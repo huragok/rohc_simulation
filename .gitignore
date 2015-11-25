@@ -28,5 +28,6 @@ lib
 .project
 *.class
 *.jar
+*.jpg
 
 

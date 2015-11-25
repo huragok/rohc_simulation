@@ -1,5 +1,8 @@
 package simROHC;
 
+import java.util.List;
+import java.util.ArrayList;
+
 /**
  * 
  * The ROHC decompressor model
@@ -14,13 +17,25 @@ public class Decompressor {
 	State state;
 	/** The number of consecutively lost packets, when the decompressor is in FC mode, used to jointly define its state*/
 	int w;
+	List<LogEntry> log;
 	
 	/**
 	* Creates a new decompressor with the given WLSB capacity. Also initialize it to be in NC state.
 	* @see #reset()
 	*/
+	static class LogEntry {
+		int w;
+		State state;
+		
+		public LogEntry(int w, State state) {
+			this.w = w;
+			this.state = state;
+		}
+	}
+	
 	public Decompressor(int W) {
 		this.W = W;
+		log = new ArrayList<LogEntry> ();
 		reset();
 	}
 	
@@ -30,6 +45,8 @@ public class Decompressor {
 	public void reset() {
 		state = State.NC;
 		w = 0;
+		log.clear();
+		log.add(new LogEntry(w, state));
 	}
 	
 	/**
@@ -62,5 +79,6 @@ public class Decompressor {
 				}
 			}
 		}
+		log.add(new LogEntry(w, state));
 	}
 }

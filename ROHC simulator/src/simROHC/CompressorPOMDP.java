@@ -1,6 +1,8 @@
 package simROHC;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -49,6 +51,18 @@ public class CompressorPOMDP implements Compressor {
 		};
 	}
 	
+	static class LogEntry {
+		DoubleMatrix belief;
+		boolean channelObs;
+		int typePacket;
+		
+		public LogEntry(DoubleMatrix belief, boolean channelObs, int typePacket) {
+			this.belief = belief;
+			this.channelObs = channelObs;
+			this.typePacket = typePacket;
+		}
+	}
+	
 	/** The POMDP compressor has knowledge on the WLSB capacity. */
 	final int W;
 	/** The POMDP compressor has knowledge on the G-E channel characteristics. */
@@ -69,6 +83,7 @@ public class CompressorPOMDP implements Compressor {
 	/** The reward corresponding to each vectors at current belief, used to select the best action */
 	double [] reward;
 	
+	List<LogEntry> log;
 	/**
 	 * Create a POMDP compressor
 	 * @param W
@@ -88,6 +103,7 @@ public class CompressorPOMDP implements Compressor {
 		double pGG = 1 - pGB;
 		
 		belief = DoubleMatrix.zeros(1, 4 + W); 
+		log = new ArrayList<LogEntry> ();
 		reset();
 		
 		// initialize #vectorPolicies and #actionPolicies
@@ -192,7 +208,9 @@ public class CompressorPOMDP implements Compressor {
 	public void reset() {
 		for (int i = 0; i < 4 + W; i++) belief.put(i, 0);
 		belief.put(0, pGB / (pBG + pGB));
-		belief.put(1, pBG / (pBG + pGB));		
+		belief.put(1, pBG / (pBG + pGB));
+		
+		log.clear();
 	}
 	
 	/**
@@ -212,9 +230,14 @@ public class CompressorPOMDP implements Compressor {
 			}
 		}
 		
+		boolean channelObs = channelEstimator.getChannelEst();
 		int typePacket = actionPolicies[policyMaxReward];
+		log.add(new LogEntry (belief, channelObs, typePacket));
 		
-		updateBelief(typePacket, channelEstimator.getChannelEst());
+		
+		updateBelief(typePacket, channelObs);
 		return typePacket;
 	}
 }
+
+

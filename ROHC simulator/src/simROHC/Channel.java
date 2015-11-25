@@ -1,5 +1,8 @@
 package simROHC;
 
+import java.util.List;
+import java.util.ArrayList;
+
 /**
  * 
  * The Gilbert-Elliot ROHC channel model
@@ -13,6 +16,7 @@ public class Channel {
 	/** The current channel state, is good or not*/
 	boolean isGood;
 	
+	List<Boolean> log;
 	/**
 	 * Create a new channel with pBG and pGB, initialize the channel state using the steady state of the G-E model.
 	 * @param pBG
@@ -22,8 +26,8 @@ public class Channel {
 		this.pBG = pBG;
 		this.pGB = pGB;
 		
-		double tmp = Math.random();
-		isGood = (tmp < pGB / (pGB + pBG) ? false : true); 
+		log = new ArrayList<Boolean> ();
+		reset();
 	}
 	
 	/**
@@ -54,5 +58,13 @@ public class Channel {
 		} else {
 			isGood = tmp < pBG;
 		}
+		log.add(isGood);
+	}
+	
+	public void reset() {
+		double tmp = Math.random();
+		isGood = (tmp < pGB / (pGB + pBG) ? false : true); 
+		log.clear();
+		log.add(isGood);
 	}
 }
