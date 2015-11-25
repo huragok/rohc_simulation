@@ -21,9 +21,7 @@ import org.w3c.dom.NodeList;
 public class CompressorPOMDP implements Compressor {
 	
 	/**
-	 * 
 	 * The compressor can only observe ROHC channel state via a imperfect channel estimator
-	 *
 	 */
 	static class ChannelEstimator {
 		/** The channel being observed. */
@@ -51,6 +49,9 @@ public class CompressorPOMDP implements Compressor {
 		};
 	}
 	
+	/**
+	 * The entry class of the POMDP compressor's log
+	 */
 	static class LogEntry {
 		DoubleMatrix belief;
 		boolean channelObs;
@@ -82,7 +83,7 @@ public class CompressorPOMDP implements Compressor {
 	int [] actionPolicies;
 	/** The reward corresponding to each vectors at current belief, used to select the best action */
 	double [] reward;
-	
+	/** The history of the decompressor's state, channel observation and the type of packets transmitted */
 	List<LogEntry> log;
 	/**
 	 * Create a POMDP compressor

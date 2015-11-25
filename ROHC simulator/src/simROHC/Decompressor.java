@@ -17,12 +17,12 @@ public class Decompressor {
 	State state;
 	/** The number of consecutively lost packets, when the decompressor is in FC mode, used to jointly define its state*/
 	int w;
+	/** The history of the decompressor's state */
 	List<LogEntry> log;
 	
 	/**
-	* Creates a new decompressor with the given WLSB capacity. Also initialize it to be in NC state.
-	* @see #reset()
-	*/
+	 * The entry class of the decompressor's log
+	 */
 	static class LogEntry {
 		int w;
 		State state;
@@ -33,6 +33,10 @@ public class Decompressor {
 		}
 	}
 	
+	/**
+	* Creates a new decompressor with the given WLSB capacity. Also initialize it to be in NC state.
+	* @see #reset()
+	*/
 	public Decompressor(int W) {
 		this.W = W;
 		log = new ArrayList<LogEntry> ();

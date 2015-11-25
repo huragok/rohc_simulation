@@ -182,8 +182,8 @@ def gen_pomdpx(filename, W, L_B, EPS, GAMMA, len_header_IR, len_header_FO, len_h
 
 if __name__ == "__main__":
     filename = "instance.pomdpx"
-    W = 13 # Capability of the WLSB coding
-    L_B = 10 # Average duration of a sequence of consecutive bad states
+    W = 8 # Capability of the WLSB coding
+    L_B = 8 # Average duration of a sequence of consecutive bad states
     EPS = 0.2 # Average deletion probability
 
     P_FA = 0.1 # False alarm probability

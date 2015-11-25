@@ -15,7 +15,7 @@ public class Channel {
 	final double pBG;
 	/** The current channel state, is good or not*/
 	boolean isGood;
-	
+	/** Record the channel state history */
 	List<Boolean> log;
 	/**
 	 * Create a new channel with pBG and pGB, initialize the channel state using the steady state of the G-E model.
