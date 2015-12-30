@@ -53,9 +53,9 @@ public class Simulator {
 		int lenPayload = 20;
 			    
 		String filename = "out.policy";
-		int N = 200; // Number of packets to transmit
+		int N = 400; // Number of packets to transmit
 		int h = 50;
-		int nRun = 10; // Number of Monte-Carlo Run of the simulation 
+		int nRun = 500; // Number of Monte-Carlo Run of the simulation 
 		
 		// Create the components of the simulator
 		Decompressor decompressor = new Decompressor(W);
@@ -64,14 +64,27 @@ public class Simulator {
 		CompressorPOMDP compressor = new CompressorPOMDP(W, channel.pBG, channel.pGB, channelEstimator, filename);
 		
 		// Start the simulation
-		for (int n = 0; n < N; n++) {
-			int typePacket = compressor.transmit(); // Compressor takes an action by transmitting a packet and updates its own state
-			decompressor.next(channel.isGood, typePacket); // Decompressor update its state according to the actual channel state and the packet (if received)
-			channel.next(); // Update the channel state
+		SummarySession summaryCum = new SummarySession(N, h);
+		for (int iRun = 0; iRun < nRun; iRun++) {
+			for (int n = 0; n < N; n++) {
+				int typePacket = compressor.transmit(); // Compressor takes an action by transmitting a packet and updates its own state
+				decompressor.next(channel.isGood, typePacket); // Decompressor update its state according to the actual channel state and the packet (if received)
+				channel.next(); // Update the channel state
+			}
+			SummarySession summary = new SummarySession(compressor.log, channel.log, decompressor.log, gamma, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, h);
+			summaryCum.sum(summary);
+			
+			channel.reset();
+			decompressor.reset();
+			compressor.reset();
 		}
+		summaryCum.normalize(nRun);
 		
-		SummarySession summary = new SummarySession(compressor.log, channel.log, decompressor.log, gamma, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, h);
-		System.out.println(summary);
+		
+		System.out.println(summaryCum);
+		double pG = channel.pBG / (channel.pBG + channel.pGB);
+		SummarySession.plotPerformance(new SummarySession [] {summaryCum}, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, pG);
+		
 		//plotPOMDPSession(compressor.log, channel.log, decompressor.log, "result", 1920, 1080);
 		
 	    System.out.println("Simulation completed");
