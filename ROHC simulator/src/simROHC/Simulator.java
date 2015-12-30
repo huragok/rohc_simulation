@@ -4,7 +4,9 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
+
 import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTitleAnnotation;
@@ -42,8 +44,18 @@ public class Simulator {
 		double eps = 0.2;
 		double pFA = 0.1;
 		double pMD = 0.1;
+		
+		double gamma = 0.95; // The discount factor
+
+		int lenHeaderIR = 80;
+		int lenHeaderFO = 16;
+		int lenHeaderSO = 4;
+		int lenPayload = 20;
+			    
 		String filename = "out.policy";
 		int N = 200; // Number of packets to transmit
+		int h = 50;
+		int nRun = 10; // Number of Monte-Carlo Run of the simulation 
 		
 		// Create the components of the simulator
 		Decompressor decompressor = new Decompressor(W);
@@ -58,19 +70,34 @@ public class Simulator {
 			channel.next(); // Update the channel state
 		}
 		
-		XYZDataset datasetBelief = createBeliefDataSet(compressor.log);
-		XYDataset datasetState = createStateDataSet(channel.log, decompressor.log);
-		XYDataset datasetChannel = createChannelDataSet(channel.log, compressor.log);
-		XYDataset datasetPacket =  createTypePacketDataSet(compressor.log);
+		SummarySession summary = new SummarySession(compressor.log, channel.log, decompressor.log, gamma, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, h);
+		System.out.println(summary);
+		//plotPOMDPSession(compressor.log, channel.log, decompressor.log, "result", 1920, 1080);
 		
-		JFreeChart chart = createChart(W, datasetBelief, datasetState, datasetChannel, datasetPacket);
-		
-		int width = 1920; // Width of the image
-	    int height = 1080; // Height of the image
-	      
-		File output = new File("result.jpg"); 
-	    ChartUtilities.saveChartAsJPEG(output, chart, width, height);
 	    System.out.println("Simulation completed");
+	}
+	
+	
+	/**
+	 * Plot the system state (belief), channel state and packetType over time figure for a single POMDP ROHC session and save it to a file
+	 * @param logCompressor		the compressor's log over this session
+	 * @param logChannel		the channel's log over this session
+	 * @param logDecompressor	the decompressor's log over this session
+	 * @param fileName			the file to save the output figure (don't include filename extension, saved as .jpg file)
+	 * @param width				width of the output figure
+	 * @param height			height of the output figure
+	 * @throws IOException 
+	 */
+	public static void plotPOMDPSession(List<CompressorPOMDP.LogEntry> logCompressor, List<Boolean> logChannel, List<Decompressor.LogEntry> logDecompressor, String fileName, int width, int height) throws IOException {
+		XYZDataset datasetBelief = createBeliefDataSet(logCompressor);
+		XYDataset datasetState = createStateDataSet(logChannel, logDecompressor);
+		XYDataset datasetChannel = createChannelDataSet(logChannel, logCompressor);
+		XYDataset datasetPacket =  createTypePacketDataSet(logCompressor);
+		
+		int W = logCompressor.get(0).belief.length - 4;
+		JFreeChart chart = createChart(W, datasetBelief, datasetState, datasetChannel, datasetPacket);
+		File output = new File(fileName + ".jpg"); 
+	    ChartUtilities.saveChartAsJPEG(output, chart, width, height);
 	}
 	
 	/**
