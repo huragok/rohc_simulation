@@ -45,7 +45,9 @@ public class Simulator {
 		double pFA = 0.1;
 		double pMD = 0.1;
 		
-		double gamma = 0.95; // The discount factor
+		int timeOutIR2SO = 3;
+		int timeOutSO2FO = 10;
+		int timeOutFO2SO = 1;
 
 		int lenHeaderIR = 80;
 		int lenHeaderFO = 16;
@@ -53,39 +55,58 @@ public class Simulator {
 		int lenPayload = 20;
 			    
 		String filename = "out.policy";
-		int N = 400; // Number of packets to transmit
-		int h = 50;
-		int nRun = 500; // Number of Monte-Carlo Run of the simulation 
+		int N = 200; // Number of packets to transmit
+		int nRun = 5000; // Number of Monte-Carlo Run of the simulation 
 		
 		// Create the components of the simulator
-		Decompressor decompressor = new Decompressor(W);
 		Channel channel = new Channel(eps, lB);
+		
+		
 		CompressorPOMDP.ChannelEstimator channelEstimator = new CompressorPOMDP.ChannelEstimator(channel, pFA, pMD);
-		CompressorPOMDP compressor = new CompressorPOMDP(W, channel.pBG, channel.pGB, channelEstimator, filename);
+		CompressorPOMDP compressorPOMDP = new CompressorPOMDP(W, channel.pBG, channel.pGB, channelEstimator, filename);
+		Decompressor decompressorPOMDP = new Decompressor(W);
+		
+		CompressorTimer compressorTimer = new CompressorTimer(timeOutIR2SO, timeOutSO2FO, timeOutFO2SO);
+		Decompressor decompressorTimer = new Decompressor(W);
 		
 		// Start the simulation
-		SummarySession summaryCum = new SummarySession(N, h);
+		SummarySession summaryCumPOMDP = new SummarySession(N);
+		SummarySession summaryCumTimer = new SummarySession(N);
 		for (int iRun = 0; iRun < nRun; iRun++) {
 			for (int n = 0; n < N; n++) {
-				int typePacket = compressor.transmit(); // Compressor takes an action by transmitting a packet and updates its own state
-				decompressor.next(channel.isGood, typePacket); // Decompressor update its state according to the actual channel state and the packet (if received)
+				int typePacketPOMDP = compressorPOMDP.transmit(); // Compressor takes an action by transmitting a packet and updates its own state
+				decompressorPOMDP.next(channel.isGood, typePacketPOMDP); // Decompressor update its state according to the actual channel state and the packet (if received)
+				
+				int typePacketTimer = compressorTimer.transmit(); // Compressor takes an action by transmitting a packet and updates its own state
+				decompressorTimer.next(channel.isGood, typePacketTimer); // Decompressor update its state according to the actual channel state and the packet (if received)
+				
 				channel.next(); // Update the channel state
 			}
-			SummarySession summary = new SummarySession(compressor.log, channel.log, decompressor.log, gamma, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, h);
-			summaryCum.sum(summary);
+			SummarySession summaryPOMDP = new SummarySession(compressorPOMDP.getLogPacketType(), channel.log, decompressorPOMDP.log, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload);
+			summaryCumPOMDP.sum(summaryPOMDP);
+			
+			SummarySession summaryTimer = new SummarySession(compressorTimer.log, channel.log, decompressorTimer.log, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload);
+			summaryCumTimer.sum(summaryTimer);
+			
+			//System.out.println(decompressorTimer.log);
 			
 			channel.reset();
-			decompressor.reset();
-			compressor.reset();
+			
+			decompressorPOMDP.reset();
+			compressorPOMDP.reset();
+			
+			decompressorTimer.reset();
+			compressorTimer.reset();
 		}
-		summaryCum.normalize(nRun);
+		summaryCumPOMDP.normalize(nRun);
+		summaryCumTimer.normalize(nRun);
 		
 		
-		System.out.println(summaryCum);
+		System.out.println(summaryCumPOMDP);
 		double pG = channel.pBG / (channel.pBG + channel.pGB);
-		SummarySession.plotPerformance(new SummarySession [] {summaryCum}, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, pG);
+		SummarySession.plotPerformance(new SummarySession [] {summaryCumPOMDP, summaryCumTimer}, new String [] {"POMDP", "U-mode"}, lenHeaderIR, lenHeaderFO, lenHeaderSO, lenPayload, pG);
 		
-		//plotPOMDPSession(compressor.log, channel.log, decompressor.log, "result", 1920, 1080);
+		//plotPOMDPSession(compressorPOMDP.log, channel.log, decompressor.log, "result", 1920, 1080);
 		
 	    System.out.println("Simulation completed");
 	}

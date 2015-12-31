@@ -31,6 +31,14 @@ public class Decompressor {
 			this.w = w;
 			this.state = state;
 		}
+		
+		public String toString() {
+			switch (state){
+				case NC: return "NC";
+				case SC: return "SC";
+				default: return "FC" + w;
+			}
+		}
 	}
 	
 	/**

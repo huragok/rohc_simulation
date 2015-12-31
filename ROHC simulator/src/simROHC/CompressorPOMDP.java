@@ -239,6 +239,14 @@ public class CompressorPOMDP implements Compressor {
 		updateBelief(typePacket, channelObs);
 		return typePacket;
 	}
+	
+	public List<Integer> getLogPacketType() {
+		List<Integer> logPacketType = new ArrayList<Integer> (log.size());
+		for (int i = 0; i < log.size(); i++) {
+			logPacketType.add(log.get(i).typePacket);
+		}
+		return logPacketType;
+	}
 }
 
 
